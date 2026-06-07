@@ -1,0 +1,105 @@
+name: Self-Healing CI
+
+on:
+  push:
+    branches: [main, master]
+
+# Prevent concurrent runs of this workflow on the same branch.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  self-heal:
+    runs-on: ubuntu-latest
+
+    # Safety guard: do NOT run on branches created by this workflow to avoid
+    # infinite PR loops.
+    if: ${{ !startsWith(github.ref, 'refs/heads/kimchi-auto-fix-') }}
+
+    # Global timeout to prevent runaway agents.
+    timeout-minutes: 15
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    env:
+      # Pass secrets into the environment for the scripts.
+      KIMCHI_API_KEY: ${{ secrets.KIMCHI_API_KEY }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Explicit safety flag that downstream scripts can read.
+      KIMCHI_SAFE_MODE: "true"
+
+    steps:
+      # ── 1. Checkout repository ──────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Full history is useful for safe diff / branch operations.
+          fetch-depth: 0
+          # Ensure the token is used for subsequent git operations.
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 2. Install Node.js dependencies ─────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: demo-app/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd demo-app
+          npm ci
+
+      # ── 3. Run tests ────────────────────────────────────────────────
+      # continue-on-error allows the workflow to proceed to the repair
+      # phase even when the test suite fails.
+      - name: Run tests
+        id: tests
+        continue-on-error: true
+        run: |
+          cd demo-app
+          npm test
+
+      # ── 4. Capture failure logs ─────────────────────────────────────
+      - name: Capture failure logs
+        if: steps.tests.outcome == 'failure'
+        run: ./scripts/collect-failure.sh
+
+      # ── 5. Install Kimchi CLI ───────────────────────────────────────
+      # This step is gated so we only install Kimchi when tests actually fail.
+      - name: Install Kimchi CLI
+        if: steps.tests.outcome == 'failure'
+        run: |
+          echo "[self-heal] Installing Kimchi CLI..."
+          # ------------------------------------------------------------------
+          # IMPORTANT: Replace the line below with the official Kimchi
+          # installation command once it is published.
+          # For now the workflow assumes Kimchi is available via a custom
+          # install script or pre-installed runner image.
+          #
+          # Example (placeholder):
+          #   curl -fsSL https://install.kimchi.dev | bash
+          # ------------------------------------------------------------------
+          if ! command -v kimchi &>/dev/null; then
+            echo "[self-heal] ERROR: Kimchi CLI is not installed."
+            echo "[self-heal] Please follow the setup instructions in README.md"
+            echo "[self-heal] to install Kimchi on this runner."
+            exit 1
+          fi
+          echo "[self-heal] Kimchi CLI is available: $(kimchi --version)"
+
+      # ── 6. Launch Kimchi to repair failures ─────────────────────────
+      - name: Launch Kimchi repair agent
+        if: steps.tests.outcome == 'failure'
+        timeout-minutes: 10
+        run: ./scripts/run-kimchi.sh
+
+      # ── 7. Create Pull Request with fix ─────────────────────────────
+      - name: Create Pull Request
+        if: steps.tests.outcome == 'failure'
+        run: ./scripts/create-pr.sh
