@@ -57,6 +57,16 @@ fi
 
 # ── 4. Create branch and commit ──────────────────────────────────────
 
+# Ensure git identity is configured (required in CI environments).
+GIT_AUTHOR_NAME="$(git -C "${PROJECT_ROOT}" config user.name 2>/dev/null || true)"
+GIT_AUTHOR_EMAIL="$(git -C "${PROJECT_ROOT}" config user.email 2>/dev/null || true)"
+if [[ -z "${GIT_AUTHOR_NAME}" ]]; then
+  git -C "${PROJECT_ROOT}" config user.name "${GITHUB_ACTOR:-Kimchi Auto-Fix}"
+fi
+if [[ -z "${GIT_AUTHOR_EMAIL}" ]]; then
+  git -C "${PROJECT_ROOT}" config user.email "${GITHUB_ACTOR:-kimchi}@users.noreply.github.com"
+fi
+
 echo "[create-pr] Creating branch ${BRANCH_NAME}..."
 git -C "${PROJECT_ROOT}" checkout -b "${BRANCH_NAME}"
 
