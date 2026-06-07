@@ -74,10 +74,10 @@ jobs:
         if: steps.tests.outcome == 'failure'
         run: |
           echo "[self-heal] Installing Kimchi CLI..."
-          # Download the latest Linux x86_64 binary from the official release.
-          curl -fsSL https://github.com/getkimchi/kimchi/releases/latest/download/kimchi_linux_amd64.tar.gz | tar xz -C /tmp
-          chmod +x /tmp/kimchi
-          sudo mv /tmp/kimchi /usr/local/bin/
+          # The tarball contains bin/kimchi and share/kimchi resources.
+          # Extracting to /usr/local places the binary on PATH and keeps
+          # the share directory in the correct relative location.
+          curl -fsSL https://github.com/getkimchi/kimchi/releases/latest/download/kimchi_linux_amd64.tar.gz | sudo tar xz -C /usr/local
           echo "[self-heal] Kimchi CLI installed:"
           kimchi --version
 
