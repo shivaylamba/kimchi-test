@@ -15,8 +15,7 @@ export class Calculator {
    * workflow in GitHub Actions.
    */
   add(a: number, b: number): number {
-    // Intentional bug for demo purposes
-    return a + b + 1;
+    return a + b;
   }
 
   /**
