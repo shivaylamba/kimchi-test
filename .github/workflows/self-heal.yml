@@ -74,22 +74,12 @@ jobs:
         if: steps.tests.outcome == 'failure'
         run: |
           echo "[self-heal] Installing Kimchi CLI..."
-          # ------------------------------------------------------------------
-          # IMPORTANT: Replace the line below with the official Kimchi
-          # installation command once it is published.
-          # For now the workflow assumes Kimchi is available via a custom
-          # install script or pre-installed runner image.
-          #
-          # Example (placeholder):
-          #   curl -fsSL https://install.kimchi.dev | bash
-          # ------------------------------------------------------------------
-          if ! command -v kimchi &>/dev/null; then
-            echo "[self-heal] ERROR: Kimchi CLI is not installed."
-            echo "[self-heal] Please follow the setup instructions in README.md"
-            echo "[self-heal] to install Kimchi on this runner."
-            exit 1
-          fi
-          echo "[self-heal] Kimchi CLI is available: $(kimchi --version)"
+          # Download the latest Linux x86_64 binary from the official release.
+          curl -fsSL https://github.com/getkimchi/kimchi/releases/latest/download/kimchi_linux_amd64.tar.gz | tar xz -C /tmp
+          chmod +x /tmp/kimchi
+          sudo mv /tmp/kimchi /usr/local/bin/
+          echo "[self-heal] Kimchi CLI installed:"
+          kimchi --version
 
       # ── 6. Launch Kimchi to repair failures ─────────────────────────
       - name: Launch Kimchi repair agent
