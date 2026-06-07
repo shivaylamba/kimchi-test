@@ -47,13 +47,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: demo-app/package-lock.json
 
       - name: Install dependencies
         run: |
           cd demo-app
-          npm ci
+          npm install
 
       # ── 3. Run tests ────────────────────────────────────────────────
       # continue-on-error allows the workflow to proceed to the repair
