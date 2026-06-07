@@ -90,4 +90,14 @@ jobs:
       # ── 7. Create Pull Request with fix ─────────────────────────────
       - name: Create Pull Request
         if: steps.tests.outcome == 'failure'
-        run: ./scripts/create-pr.sh
+        env:
+          # Ensure gh CLI picks up the token in CI.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "[self-heal] GH_TOKEN length: ${#GH_TOKEN}"
+          if [[ -z "${GH_TOKEN}" ]]; then
+            echo "[self-heal] ERROR: GH_TOKEN / GITHUB_TOKEN is empty."
+            echo "[self-heal] Make sure GITHUB_TOKEN is available in the workflow."
+            exit 1
+          fi
+          ./scripts/create-pr.sh
